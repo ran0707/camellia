@@ -1,0 +1,35 @@
+{
+    "getStarted": "Get Started",
+    "selectLanguage": "Select Your Language",
+    "next": "Next",
+    "enterDetails": "Enter Your Details",
+    "name": "Name",
+    "phoneNumber": "Phone Number",
+    "street": "Street",
+    "locality": "Locality",
+    "administrativeArea": "Administrative Area",
+    "city": "City",
+    "state": "State",
+    "getOTP": "Get OTP",
+    "enterOTP": "Enter OTP",
+    "submit": "Submit",
+    "welcome": "Welcome, {{name}}!",
+    "phone": "Phone",
+    "location": "Location",
+    "logout": "Logout",
+    "validationErrors": {
+      "nameRequired": "Name is required",
+      "phoneInvalid": "Phone number must be 10 digits",
+      "otpInvalid": "OTP must be 6 digits",
+      "invalidOTP": "Invalid OTP. Please try again."
+    },
+    "dialogs": {
+      "otpTitle": "OTP Generated",
+      "otpMessage": "Your OTP is: {{otp}}",
+      "errorTitle": "Error",
+      "errorMessage": "{{message}}",
+      "ok": "OK"
+    },
+    "loading": "Loading..."
+  }
+  
