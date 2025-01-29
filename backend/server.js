@@ -1,9 +1,10 @@
 // backend/server.js
+
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const connectDB = require('./config/db');
+const connectDB = require('./config/db'); // Ensure you have a db.js file in config
 
 dotenv.config();
 
@@ -13,7 +14,11 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:19006', // Replace with your frontend's URL (Expo's default)
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+}));
 app.use(bodyParser.json());
 
 // Routes

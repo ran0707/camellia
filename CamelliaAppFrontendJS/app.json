@@ -15,11 +15,15 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "This app needs access to your camera to function properly."
+        "NSCameraUsageDescription": "This app needs access to your camera to function properly.",
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to provide better services."
       }
     },
     "android": {
-     
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
+      ],
       "package": "com.anonymous.CamelliaAppFrontendJS"
     },
     "web": {

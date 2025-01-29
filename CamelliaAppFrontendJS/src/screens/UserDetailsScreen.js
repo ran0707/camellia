@@ -1,329 +1,424 @@
 // src/screens/UserDetailsScreen.js
+
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  Alert,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { Button, TextInput, Text } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import customTheme from '../utils/theme';
 import * as Location from 'expo-location';
-import MessageDialog from '../components/MessageDialog'; // Import the MessageDialog component
+
+import customTheme from '../utils/theme';
+import MessageDialog from '../components/MessageDialog'; // Ensure this path is correct
 
 const UserDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { language, location } = route.params; // Destructure location
-  const { t, i18n } = useTranslation();
+  const { location } = route.params || {}; // If location is passed from a previous screen
+  const { t } = useTranslation();
 
+  // State variables for user input
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [street, setStreet] = useState('');
-  const [locality, setLocality] = useState('');
-  const [administrativeArea, setAdministrativeArea] = useState('');
   const [city, setCity] = useState('');
-  const [state, setState] = useState('');
+  const [stateField, setStateField] = useState('');
+  const [country, setCountry] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [coordinates, setCoordinates] = useState({ latitude: 0, longitude: 0 });
+
+  // Form & status states
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(true);
 
-  // States for OTP Dialog
-  const [otpDialogVisible, setOtpDialogVisible] = useState(false);
-  const [otp, setOtp] = useState('');
-
-  // States for Error Dialog
+  // Error dialog states
   const [errorDialogVisible, setErrorDialogVisible] = useState(false);
   const [errorDialogMessage, setErrorDialogMessage] = useState('');
 
   useEffect(() => {
+    // This effect runs once on component mount or when `location` changes
     const fetchAddress = async () => {
+      // For Web, skip reverse-geocoding (Expo SDK 49+ no longer supports it)
+      if (Platform.OS === 'web') {
+        console.log('[fetchAddress] Running on web: skipping reverse-geocoding');
+        setIsLoadingAddress(false);
+        return;
+      }
+
+      // On iOS/Android, attempt to fetch address
+      console.log('[fetchAddress] Attempting location permission & reverse-geocoding...');
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        console.log('[fetchAddress] Permission denied: skipping reverse-geocoding');
+        setIsLoadingAddress(false);
+        return;
+      }
+
       try {
-        const reverseGeocode = await Location.reverseGeocodeAsync({
+        if (!location || !location.latitude || !location.longitude) {
+          console.log('[fetchAddress] Invalid location data received:', location);
+          showErrorDialog('Invalid location data. Please enter address manually.');
+          setIsLoadingAddress(false);
+          return;
+        }
+
+        // Reverse geocoding
+        console.log('[fetchAddress] Reverse geocoding coords:', location);
+        const addressArray = await Location.reverseGeocodeAsync({
           latitude: location.latitude,
           longitude: location.longitude,
         });
+        console.log('[fetchAddress] reverseGeocodeAsync result:', addressArray);
 
-        if (reverseGeocode.length > 0) {
-          const addr = reverseGeocode[0];
+        if (addressArray.length > 0) {
+          const addr = addressArray[0];
           setStreet(addr.street || '');
-          setLocality(addr.subLocality || '');
-          setAdministrativeArea(addr.subAdminArea || '');
-          setCity(addr.city || '');
-          setState(addr.region || '');
+          setCity(addr.city || addr.town || addr.village || '');
+          setStateField(addr.region || addr.state || '');
+          setCountry(addr.country || '');
+          setPostalCode(addr.postalCode || '');
+          setCoordinates({
+            // If the reverse geocode result has lat/long, use them; otherwise fallback
+            latitude: addr.latitude || location.latitude,
+            longitude: addr.longitude || location.longitude,
+          });
         } else {
-          Alert.alert(t('dialogs.errorTitle'), t('dialogs.errorMessage', { message: 'Unable to fetch address from location.' }));
+          console.log('[fetchAddress] No address found for coords:', location);
+          showErrorDialog('Unable to fetch address from location. Please enter manually.');
         }
       } catch (error) {
-        console.error('Error fetching address:', error);
-        showErrorDialog(t('dialogs.errorMessage', { message: 'An error occurred while fetching the address.' }));
+        console.log('[fetchAddress] Error:', error);
+        showErrorDialog('An error occurred while fetching your address.');
       } finally {
         setIsLoadingAddress(false);
       }
     };
 
     fetchAddress();
-  }, [location, t]);
+  }, [location]);
 
-  const validate = () => {
-    let valid = true;
-    let tempErrors = {};
-
-    if (!name.trim()) {
-      tempErrors.name = t('validationErrors.nameRequired');
-      valid = false;
+  // Helper to request location permission
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Location access is needed to auto-fetch your address. Please grant permission or enter address manually.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.log('[requestLocationPermission] Error:', err);
+      return false;
     }
-
-    if (!phoneNumber || phoneNumber.length !== 10) {
-      tempErrors.phoneNumber = t('validationErrors.phoneInvalid');
-      valid = false;
-    }
-
-    setErrors(tempErrors);
-    return valid;
   };
 
+  // Helper to show error dialog
   const showErrorDialog = (message) => {
     setErrorDialogMessage(message);
     setErrorDialogVisible(true);
   };
 
+  const closeErrorDialog = () => setErrorDialogVisible(false);
+
+  // Validate user input
+  const validate = () => {
+    let isValid = true;
+    let tempErrors = {};
+
+    if (!name.trim()) {
+      tempErrors.name = 'Name is required.';
+      isValid = false;
+    }
+
+    if (!phoneNumber || phoneNumber.length !== 10 || !/^\d{10}$/.test(phoneNumber)) {
+      tempErrors.phoneNumber = 'Enter a valid 10-digit phone number.';
+      isValid = false;
+    }
+
+    if (!street.trim()) {
+      tempErrors.street = 'Street is required.';
+      isValid = false;
+    }
+
+    if (!city.trim()) {
+      tempErrors.city = 'City is required.';
+      isValid = false;
+    }
+
+    if (!country.trim()) {
+      tempErrors.country = 'Country is required.';
+      isValid = false;
+    }
+
+    if (!postalCode.trim()) {
+      tempErrors.postalCode = 'Postal Code is required.';
+      isValid = false;
+    }
+
+    // Validate coordinates
+    if (coordinates.latitude === 0 || coordinates.longitude === 0) {
+      tempErrors.coordinates = 'Invalid coordinates. Please ensure location is correct.';
+      isValid = false;
+    }
+
+    setErrors(tempErrors);
+    return isValid;
+  };
+
+  // Handle submission
   const handleSubmit = async () => {
-    if (validate()) {
-      setIsSubmitting(true);
-      try {
-        // Prepare data to send to the backend
-        const userData = {
-          name,
-          phoneNumber,
-          address: {
-            street,
-            locality,
-            administrativeArea,
-            city,
-            state,
-          },
-          location: {
-            latitude: location.latitude,
-            longitude: location.longitude,
-          },
-          language,
-        };
-
-        // Log the userData for debugging
-        console.log('Submitting User Data:', userData);
-
-        // Replace with your actual backend API endpoint
-        const API_ENDPOINT = 'http://localhost:5000/api/auth/register'; // Use your actual backend URL
-
-        const response = await fetch(API_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(userData),
-        });
-
-        if (response.ok) {
-          const responseData = await response.json();
-          console.log('User registered successfully:', responseData);
-
-          // Extract OTP from response
-          const generatedOTP = responseData.otp;
-
-          // Optionally, save user data locally
-          await AsyncStorage.setItem('user', JSON.stringify(userData));
-
-          // Show OTP Dialog
-          setOtp(generatedOTP);
-          setOtpDialogVisible(true);
-        } else {
-          const errorData = await response.json();
-          console.error('Error registering user:', errorData);
-          showErrorDialog(errorData.message || 'Failed to register user.');
-        }
-      } catch (error) {
-        console.error('Error during submission:', error);
-        showErrorDialog('An error occurred while saving your data.');
-      } finally {
-        setIsSubmitting(false);
-      }
-    } else {
+    if (!validate()) {
       Alert.alert('Validation Error', 'Please correct the highlighted fields.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare data
+      const userData = {
+        name,
+        phoneNumber,
+        location: {
+          street,
+          city,
+          state: stateField,
+          country,
+          postalCode,
+          coordinates,
+        },
+      };
+
+      console.log('[handleSubmit] Submitting User Data:', userData);
+
+      const API_ENDPOINT = 'http://10.0.2.2:5000/api/auth/register';
+
+      console.log('[handleSubmit] Sending POST to:', API_ENDPOINT);
+
+      const response = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+
+      console.log('[handleSubmit] Response status:', response.status);
+
+      const responseData = await response.json();
+      console.log('[handleSubmit] Response JSON:', responseData);
+
+      if (response.ok) {
+        // Optionally store data in AsyncStorage
+        // await AsyncStorage.setItem('user', JSON.stringify(responseData.user));
+
+        Alert.alert(
+          'Registration Successful',
+          'You have registered successfully.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Home') }] // Adjust navigation as desired
+        );
+      } else {
+        showErrorDialog(responseData.message || 'Failed to register user.');
+      }
+    } catch (error) {
+      console.log('[handleSubmit] Error during submission:', error);
+      showErrorDialog('An error occurred while saving your data.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleOTPDialogDismiss = () => {
-    setOtpDialogVisible(false);
-    // Navigate to OTPScreen after dismissing the dialog
-    navigation.navigate('OTPScreen', {
-      phoneNumber,
-      language,
-    });
-  };
-
-  if (isLoadingAddress) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={customTheme.colors.primary} />
-        <Text style={styles.loadingText}>{t('loading')}</Text>
-      </View>
-    );
-  }
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>{t('enterDetails')}</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.keyboardAvoidingView}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.heading}>Enter Your Details</Text>
 
-      <TextInput
-        label={t('name')}
-        value={name}
-        onChangeText={(text) => setName(text)}
-        mode="outlined"
-        style={styles.input}
-        error={!!errors.name}
-      />
-      {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+        {/* Name */}
+        <TextInput
+          label="Name"
+          value={name}
+          onChangeText={setName}
+          mode="outlined"
+          style={styles.input}
+          placeholder="Enter your full name"
+          error={!!errors.name}
+        />
+        {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
-      <TextInput
-        label={t('phoneNumber')}
-        value={phoneNumber}
-        onChangeText={(text) => setPhoneNumber(text)}
-        mode="outlined"
-        keyboardType="number-pad"
-        maxLength={10}
-        style={styles.input}
-        error={!!errors.phoneNumber}
-      />
-      {errors.phoneNumber && (
-        <Text style={styles.errorText}>{errors.phoneNumber}</Text>
-      )}
+        {/* Phone Number */}
+        <TextInput
+          label="Phone Number"
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          mode="outlined"
+          keyboardType="number-pad"
+          maxLength={10}
+          style={styles.input}
+          placeholder="Enter your mobile number"
+          error={!!errors.phoneNumber}
+        />
+        {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
 
-      {/* Address Fields */}
-      <TextInput
-        label={t('street')}
-        value={street}
-        onChangeText={(text) => setStreet(text)}
-        mode="outlined"
-        style={styles.input}
-      />
+        {/* Street */}
+        <TextInput
+          label="Street"
+          value={street}
+          onChangeText={setStreet}
+          mode="outlined"
+          style={styles.input}
+          placeholder={
+            isLoadingAddress ? 'Fetching location...' : 'Street name or House number'
+          }
+          editable={Platform.OS === 'web' || !isLoadingAddress}
+          error={!!errors.street}
+        />
+        {errors.street && <Text style={styles.errorText}>{errors.street}</Text>}
 
-      <TextInput
-        label={t('locality')}
-        value={locality}
-        onChangeText={(text) => setLocality(text)}
-        mode="outlined"
-        style={styles.input}
-      />
+        {/* City */}
+        <TextInput
+          label="City"
+          value={city}
+          onChangeText={setCity}
+          mode="outlined"
+          style={styles.input}
+          placeholder={
+            isLoadingAddress ? 'Fetching location...' : 'City / District'
+          }
+          editable={Platform.OS === 'web' || !isLoadingAddress}
+          error={!!errors.city}
+        />
+        {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
 
-      <TextInput
-        label={t('administrativeArea')}
-        value={administrativeArea}
-        onChangeText={(text) => setAdministrativeArea(text)}
-        mode="outlined"
-        style={styles.input}
-      />
+        {/* State */}
+        <TextInput
+          label="State"
+          value={stateField}
+          onChangeText={setStateField}
+          mode="outlined"
+          style={styles.input}
+          placeholder="Enter your state"
+          editable={Platform.OS === 'web' || !isLoadingAddress}
+        />
+        {/* Not mandatory by default, so no error message here. If needed, add one. */}
 
-      <TextInput
-        label={t('city')}
-        value={city}
-        onChangeText={(text) => setCity(text)}
-        mode="outlined"
-        style={styles.input}
-      />
+        {/* Country */}
+        <TextInput
+          label="Country"
+          value={country}
+          onChangeText={setCountry}
+          mode="outlined"
+          style={styles.input}
+          placeholder={isLoadingAddress ? 'Fetching location...' : 'Country'}
+          editable={Platform.OS === 'web' || !isLoadingAddress}
+          error={!!errors.country}
+        />
+        {errors.country && <Text style={styles.errorText}>{errors.country}</Text>}
 
-      <TextInput
-        label={t('state')}
-        value={state}
-        onChangeText={(text) => setState(text)}
-        mode="outlined"
-        style={styles.input}
-      />
+        {/* Postal Code */}
+        <TextInput
+          label="Postal Code"
+          value={postalCode}
+          onChangeText={setPostalCode}
+          mode="outlined"
+          keyboardType="number-pad"
+          style={styles.input}
+          placeholder={isLoadingAddress ? 'Fetching location...' : 'PIN / Zip Code'}
+          editable={Platform.OS === 'web' || !isLoadingAddress}
+          error={!!errors.postalCode}
+        />
+        {errors.postalCode && <Text style={styles.errorText}>{errors.postalCode}</Text>}
 
-      <Button
-        mode="contained"
-        onPress={handleSubmit}
-        color={customTheme.colors.primary} // Uses theme primary color
-        style={styles.button}
-        contentStyle={styles.buttonContent}
-        labelStyle={styles.buttonLabel}
-        disabled={isSubmitting} // Disable button while submitting
-      >
+        {/* Submit Button or Loader */}
         {isSubmitting ? (
-          <ActivityIndicator animating={true} color={customTheme.colors.surface} />
+          <ActivityIndicator
+            size="large"
+            color={customTheme.colors.primary}
+            style={styles.registerLoader}
+          />
         ) : (
-          t('getOTP')
+          <Button
+            mode="contained"
+            onPress={handleSubmit}
+            style={styles.button}
+            contentStyle={styles.buttonContent}
+            labelStyle={styles.buttonLabel}
+            disabled={isSubmitting}
+          >
+            Submit
+          </Button>
         )}
-      </Button>
 
-      {/* OTP Dialog */}
-      <MessageDialog
-        visible={otpDialogVisible}
-        onDismiss={handleOTPDialogDismiss}
-        title={t('dialogs.otpTitle')}
-        message={t('dialogs.otpMessage', { otp })}
-        buttonLabel={t('dialogs.ok')}
-      />
-
-      {/* Error Dialog */}
-      <MessageDialog
-        visible={errorDialogVisible}
-        onDismiss={() => setErrorDialogVisible(false)}
-        title={t('dialogs.errorTitle')}
-        message={t('dialogs.errorMessage', { message: errorDialogMessage })}
-        buttonLabel={t('dialogs.ok')}
-      />
-    </ScrollView>
+        {/* Error Dialog */}
+        <MessageDialog
+          visible={errorDialogVisible}
+          onDismiss={closeErrorDialog}
+          title="Error"
+          message={errorDialogMessage}
+          buttonLabel="OK"
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
+export default UserDetailsScreen;
+
 const styles = StyleSheet.create({
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   container: {
     flexGrow: 1,
-    backgroundColor: customTheme.colors.background, // Uses theme background color
-    padding: 16,
+    backgroundColor: customTheme.colors.background,
+    padding: 20,
     justifyContent: 'center',
   },
   heading: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: customTheme.colors.text, // Uses theme text color
-    marginBottom: 20,
+    color: customTheme.colors.text,
     textAlign: 'center',
+    marginBottom: 20,
   },
   input: {
     marginBottom: 10,
-    backgroundColor: customTheme.colors.surface, // Ensures background consistency
+    backgroundColor: customTheme.colors.surface,
   },
   button: {
     marginTop: 20,
     alignSelf: 'center',
-    backgroundColor: customTheme.colors.primary, // Uses theme primary color
-    borderRadius: 25,
+    backgroundColor: customTheme.colors.primary,
+    borderRadius: 8,
+    width: '50%',
   },
   buttonContent: {
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 24,
   },
   buttonLabel: {
-    fontSize: 18,
-    color: customTheme.colors.surface, // Ensures contrast with the button
+    fontSize: 16,
+    color: customTheme.colors.surface,
     fontWeight: 'bold',
+  },
+  registerLoader: {
+    marginTop: 24,
   },
   errorText: {
     color: 'red',
     marginBottom: 10,
     marginLeft: 4,
   },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: customTheme.colors.background, // Uses theme background color
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: customTheme.colors.text, // Uses theme text color
-  },
 });
-
-export default UserDetailsScreen;
