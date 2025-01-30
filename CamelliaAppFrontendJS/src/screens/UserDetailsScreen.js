@@ -402,11 +402,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     alignSelf: 'center',
     backgroundColor: customTheme.colors.primary,
-    borderRadius: 8,
+    borderRadius: 25,
     width: '50%',
   },
   buttonContent: {
-    paddingVertical: 10,
+    paddingVertical: 5,
     paddingHorizontal: 24,
   },
   buttonLabel: {

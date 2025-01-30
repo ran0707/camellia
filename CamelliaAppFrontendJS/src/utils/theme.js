@@ -5,7 +5,7 @@ const customTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#D68C45', // Warm Orange (Primary Button)
+    primary: '#2E7D32', // Warm Orange (Primary Button)
     accent: '#4C956C', // Green
     background: '#FFFFFF', // White
     surface: '#FFFFFF', // White

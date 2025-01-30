@@ -1,58 +1,179 @@
 // src/screens/GetStartedScreen.js
-import React from 'react';
-import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import React, { useEffect } from 'react';
+import { 
+  StyleSheet, 
+  View, 
+  Image, 
+  TouchableOpacity, 
+  Animated, 
+  Dimensions,
+  Easing
+} from 'react-native';
+import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import customTheme from '../utils/theme';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import * as Animatable from 'react-native-animatable';
 import { useTranslation } from 'react-i18next';
+
+const { width } = Dimensions.get('window');
+
+// Define custom animation for the image
+const floatingAnimation = {
+  0: {
+    transform: [{ translateY: 0 }, { scale: 1 }],
+  },
+  0.5: {
+    transform: [{ translateY: -15 }, { scale: 1.02 }],
+  },
+  1: {
+    transform: [{ translateY: 0 }, { scale: 1 }],
+  },
+};
 
 const GetStartedScreen = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   
+  // Animation values
+  const arrowAnimation = new Animated.Value(0);
+  const buttonScale = new Animated.Value(1);
+  const imageAnimation = new Animated.Value(0);
+
+  // Start arrow animation
+  const startArrowAnimation = () => {
+    Animated.sequence([
+      Animated.timing(arrowAnimation, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(arrowAnimation, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ]).start(() => startArrowAnimation());
+  };
+
+  // Button press animations
+  const handlePressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  useEffect(() => {
+    startArrowAnimation();
+  }, []);
+
+  // Interpolate arrow movement
+  const arrowTranslateX = arrowAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 10],
+  });
 
   return (
     <View style={styles.container}>
       {/* Top Left Logo */}
-      <TouchableOpacity style={styles.topLeft}>
+      <Animatable.View 
+        animation="fadeIn" 
+        duration={1000} 
+        delay={300}
+        style={styles.topLeft}
+      >
         <Image
-          source={"https://upload.wikimedia.org/wikipedia/commons/d/dc/Ministry_of_Science_and_Technology_India.svg"}
+          source={require('../assets/images/logo2.png')}
           style={styles.roundedLogo}
           resizeMode="contain"
         />
-      </TouchableOpacity>
+      </Animatable.View>
 
       {/* Top Right Logo */}
-      <TouchableOpacity style={styles.topRight}>
+      <Animatable.View 
+        animation="fadeIn" 
+        duration={1000} 
+        delay={600}
+        style={styles.topRight}
+      >
         <Image
           source={require('../assets/images/logo.png')}
           style={styles.roundedLogo}
           resizeMode="contain"
         />
-      </TouchableOpacity>
+      </Animatable.View>
 
-      {/* Center Image with App Name */}
-      <View style={styles.centerContent}>
-        <Image
-          source={require('../assets/images/landing.png')}
-          style={styles.teaLeaf}
-          resizeMode="contain"
-        />
-        <Text style={styles.appName}>{t('Camellia')}</Text>
-      </View>
-
-      {/* Get Started Button */}
-      <View style={styles.buttonContainer}>
-        <Button
-          mode="contained"
-          onPress={() => navigation.navigate('LanguageSelection')}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
-          labelStyle={styles.buttonLabel}
+      {/* Center Content */}
+      <Animatable.View 
+        animation="fadeIn" 
+        duration={1200} 
+        delay={900}
+        style={styles.centerContent}
+      >
+        {/* Animated center image */}
+        <Animatable.View
+          animation={floatingAnimation}
+          duration={3000}
+          iterationCount="infinite"
+          easing="ease-in-out"
         >
-          {t('Get Started')}
-        </Button>
-      </View>
+          <Image
+            source={require('../assets/images/landing.png')}
+            style={styles.teaLeaf}
+            resizeMode="contain"
+          />
+        </Animatable.View>
+        
+        <Animatable.Text 
+          animation="fadeInUp" 
+          duration={1000} 
+          delay={1200}
+          style={styles.appName}
+        >
+          {t('Camellia')}
+        </Animatable.Text>
+      </Animatable.View>
+
+      {/* Animated Get Started Button */}
+      <Animatable.View 
+        animation="fadeInUp" 
+        duration={1000} 
+        delay={1500}
+        style={styles.buttonContainer}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.navigate('LanguageSelection')}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.9}
+        >
+          <Animated.View 
+            style={[
+              styles.button,
+              { transform: [{ scale: buttonScale }] }
+            ]}
+          >
+            <Text style={styles.buttonText}>{t('Get Started')}</Text>
+            <Animated.View 
+              style={[
+                styles.arrowContainer,
+                { transform: [{ translateX: arrowTranslateX }] }
+              ]}
+            >
+              <Icon name="arrow-forward" size={24} color="#FFFFFF" />
+            </Animated.View>
+          </Animated.View>
+        </TouchableOpacity>
+      </Animatable.View>
     </View>
   );
 };
@@ -60,7 +181,7 @@ const GetStartedScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: customTheme.colors.background, // Off White
+    backgroundColor: '#FFFFFF',
     padding: 16,
     position: 'relative',
     justifyContent: 'center',
@@ -77,28 +198,29 @@ const styles = StyleSheet.create({
     right: 10,
   },
   roundedLogo: {
-    width: 100, // Increased size
+    width: 100,
     height: 100,
-    borderRadius:50,
-    overflow:'hidden',
+    borderRadius: 50,
+    overflow: 'hidden',
   },
   centerContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40, // Extra spacing for a better layout
+    marginBottom: 40,
   },
   teaLeaf: {
-    width: 350, // Increased image size
-    height: 350,
+    width: width * 0.8,
+    height: width * 0.8,
+    maxWidth: 350,
+    maxHeight: 350,
   },
   appName: {
     marginTop: 20,
-    fontSize: 36, // Bigger font size
+    fontSize: 36,
     fontWeight: 'bold',
-    //fontFamily: 'Poppins-Bold', // Catchy font
-    color: customTheme.colors.text, // Dark Green
-    textTransform: 'uppercase', // More modern styling
-    letterSpacing: 1, // Slight spacing for better readability
+    color: '#2E7D32',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   buttonContainer: {
     position: 'absolute',
@@ -107,19 +229,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: customTheme.colors.primary, // Use custom theme
-    borderRadius: 30, // Rounded button
-    elevation: 2, // Shadow effect
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2E7D32',
+    borderRadius: 30,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
-  buttonContent: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-  },
-  buttonLabel: {
-    fontSize: 16, // Bigger font for readability
-    color: customTheme.colors.surface, // Off White text
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
     fontWeight: 'bold',
-    //fontFamily: 'Poppins-Bold', // Consistent font
+    marginRight: 10,
+  },
+  arrowContainer: {
+    width: 24,
+    height: 24,
   },
 });
 

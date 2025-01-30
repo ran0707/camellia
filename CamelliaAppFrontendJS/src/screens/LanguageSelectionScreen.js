@@ -150,19 +150,20 @@ const styles = StyleSheet.create({
     color: customTheme.colors.text, // Uses theme text color
   },
   button: {
-    marginTop: 20,
+    marginTop: 10,
     alignSelf: 'center',
     backgroundColor: customTheme.colors.primary, // Uses theme primary color
     borderRadius: 25,
+ 
   },
   buttonContent: {
-    paddingVertical: 12,
+    paddingVertical: 5,
     paddingHorizontal: 24,
   },
   buttonLabel: {
     fontSize: 18,
     color: customTheme.colors.surface, // Ensures contrast with the button
-    fontWeight: 'bold',
+    //fontWeight: 'bold',
   },
 });
 
