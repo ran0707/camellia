@@ -16,7 +16,7 @@ const GetStartedScreen = () => {
       {/* Top Left Logo */}
       <TouchableOpacity style={styles.topLeft}>
         <Image
-          source={require('../assets/images/logo.png')}
+          source={"https://upload.wikimedia.org/wikipedia/commons/d/dc/Ministry_of_Science_and_Technology_India.svg"}
           style={styles.roundedLogo}
           resizeMode="contain"
         />

@@ -7,31 +7,25 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import customTheme from '../utils/theme';
 
+
 const HomeScreen = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const userData = await AsyncStorage.getItem('user');
-        if (userData) {
-          const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-        } else {
-          // If no user data, navigate back to GetStarted
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'GetStarted' }],
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load user data:', error);
-        Alert.alert('Error', 'Failed to load user data.');
-      }
-    })();
-  }, []);
+  const getdata = async () => {
+    // const data =  await AsyncStorage.setItem('user-location', JSON.stringify(getdata))
+    return console.log("ithaanda naan",await AsyncStorage.getItem('user'))
+    
+  }
+
+  useEffect (()=>{
+    const getUser = async()=>{
+    return await AsyncStorage.getItem("user")
+    }
+    setUser(getUser)
+    console.log("kkkk",getdata())
+  },[])
 
   const handleLogout = async () => {
     try {
@@ -62,9 +56,9 @@ const HomeScreen = () => {
       <Text style={styles.detailText}>
         {t('phone')}: {user.phoneNumber}
       </Text>
-      <Text style={styles.detailText}>
+      {/* <Text style={styles.detailText}>
         {t('location')}: {user.address.city}, {user.address.state}
-      </Text>
+      </Text> */}
 
       <Button
         mode="contained"

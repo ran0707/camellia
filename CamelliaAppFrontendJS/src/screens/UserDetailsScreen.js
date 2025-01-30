@@ -216,16 +216,17 @@ const UserDetailsScreen = () => {
       console.log('[handleSubmit] Response status:', response.status);
 
       const responseData = await response.json();
-      console.log('[handleSubmit] Response JSON:', responseData);
+      console.log('[handleSubmit] Response JSON:', JSON.stringify(userData));
 
       if (response.ok) {
         // Optionally store data in AsyncStorage
-        // await AsyncStorage.setItem('user', JSON.stringify(responseData.user));
-
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        console.log("OTP pathuko",responseData.otp)
+        console.log("ithaanda user",await AsyncStorage.getItem('user'))
         Alert.alert(
           'Registration Successful',
           'You have registered successfully.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Home') }] // Adjust navigation as desired
+          [{ text: 'OK', onPress: () => navigation.navigate('OTPScreen', {phoneNumber}) }] // Adjust navigation as desired
         );
       } else {
         showErrorDialog(responseData.message || 'Failed to register user.');

@@ -1,16 +1,18 @@
+// src/screens/OTPScreen.js
+
 import React, { useState } from 'react';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Alert } from 'react-native';
 import { Button, TextInput, Text } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import customTheme from '../utils/theme';
-import MessageDialog from '../components/MessageDialog'; // Import the MessageDialog component
+import MessageDialog from '../components/MessageDialog'; // Ensure this path is correct
 
 const OTPScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { phoneNumber, language } = route.params;
+  const { phoneNumber } = route.params; // Removed 'language' as per your requirement
   const { t } = useTranslation();
 
   const [otp, setOTP] = useState('');
@@ -27,64 +29,59 @@ const OTPScreen = () => {
   };
 
   const handleVerifyOTP = async () => {
-    if (otp.length !== 6) {
-      setError(t('validationErrors.otpInvalid'));
+    if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+      setError(t('validationErrors.otpInvalid') || 'Enter a valid 6-digit OTP.');
       return;
     }
 
     setLoading(true);
 
-    // Simulate delay for 2 seconds
-    setTimeout(async () => {
-      try {
-        // Replace with your actual backend API endpoint
-        const API_ENDPOINT = 'http://localhost:5000/api/auth/verify-otp'; // Use your actual backend URL
+    try {
+      // Replace with your actual backend API endpoint
+      const API_ENDPOINT =  'http://10.0.2.2:5000/api/auth/verify-otp' // For Android Emulator
+        // For iOS Simulator or Physical Devices
 
-        const response = await fetch(API_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ phoneNumber, otp }),
-        });
+      const response = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phoneNumber, otp }),
+      });
 
-        if (response.ok) {
-          const responseData = await response.json();
-          console.log('OTP verified successfully:', responseData);
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log('OTP verified successfully:', responseData);
 
-          // Optionally, update user data locally to reflect verification
-          const userData = await AsyncStorage.getItem('user');
-          if (userData) {
-            const updatedUser = JSON.parse(userData);
-            updatedUser.isVerified = true;
-            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-          }
-
-          // Navigate to Home Screen
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Home' }],
-          });
-        } else {
-          const errorData = await response.json();
-          console.error('Error verifying OTP:', errorData);
-          showErrorDialog(errorData.message || 'Failed to verify OTP.');
+        // Optionally, update user data locally to reflect verification
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const updatedUser = JSON.parse(userData);
+          updatedUser.isVerified = true;
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
         }
-      } catch (error) {
-        console.error('Error during OTP verification:', error);
-        showErrorDialog('An error occurred while verifying OTP.');
-      } finally {
-        setLoading(false);
+
+        console.log('Navigating to Home screen');
+        navigation.replace('Home');
+      } else {
+        const errorData = await response.json();
+        console.error('Error verifying OTP:', errorData);
+        showErrorDialog(errorData.message || 'Failed to verify OTP.');
       }
-    }, 2000); // 2-second delay
+    } catch (error) {
+      console.error('Error during OTP verification:', error);
+      showErrorDialog('An error occurred while verifying OTP.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>{t('enterOTP')}</Text>
+      <Text style={styles.heading}>{t('enterOTP') || 'Enter OTP'}</Text>
 
       <TextInput
-        label={t('otp')}
+        label={t('otp') || 'OTP'}
         value={otp}
         onChangeText={(text) => {
           setOTP(text);
@@ -95,6 +92,7 @@ const OTPScreen = () => {
         maxLength={6}
         style={styles.input}
         error={!!error}
+        placeholder={t('placeholders.enterOTP') || 'Enter your 6-digit OTP'}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -109,7 +107,7 @@ const OTPScreen = () => {
         {loading ? (
           <ActivityIndicator animating={true} color={customTheme.colors.surface} />
         ) : (
-          t('submit')
+          t('submit') || 'Submit'
         )}
       </Button>
 
@@ -117,9 +115,9 @@ const OTPScreen = () => {
       <MessageDialog
         visible={errorDialogVisible}
         onDismiss={() => setErrorDialogVisible(false)}
-        title={t('dialogs.errorTitle')}
-        message={t('dialogs.errorMessage', { message: errorDialogMessage })}
-        buttonLabel={t('dialogs.ok')}
+        title={t('dialogs.errorTitle') || 'Error'}
+        message={t('dialogs.errorMessage', { message: errorDialogMessage }) || errorDialogMessage}
+        buttonLabel={t('dialogs.ok') || 'OK'}
       />
     </View>
   );
