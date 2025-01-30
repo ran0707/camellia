@@ -44,6 +44,7 @@ const AppNavigator = () => {
             component={HomeScreen}
             options={{ headerShown: false }}
           />
+         
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

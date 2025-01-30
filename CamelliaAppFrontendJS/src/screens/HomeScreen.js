@@ -1,75 +1,128 @@
-// src/screens/HomeScreen.js
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Alert, ActivityIndicator } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { Text, Button, Surface, Avatar, ActivityIndicator } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import customTheme from '../utils/theme';
 
+const API_KEY = '9dac1789f6909ca2205c94277b32f8bd';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const { t } = useTranslation();
   const [user, setUser] = useState(null);
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const getdata = async () => {
-    // const data =  await AsyncStorage.setItem('user-location', JSON.stringify(getdata))
-    return console.log("ithaanda naan",await AsyncStorage.getItem('user'))
-    
-  }
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const storedUserString = await AsyncStorage.getItem('user');
+        if (storedUserString) {
+          const storedUser = JSON.parse(storedUserString);
+          setUser(storedUser);
+          if (storedUser?.location?.coordinates) {
+            await fetchWeather(
+              storedUser.location.coordinates.latitude,
+              storedUser.location.coordinates.longitude
+            );
+          }
+        }
+      } catch (err) {
+        console.error('Error loading data:', err);
+      }
+    };
+    loadData();
+  }, []);
 
-  useEffect (()=>{
-    const getUser = async()=>{
-    return await AsyncStorage.getItem("user")
-    }
-    setUser(getUser)
-    console.log("kkkk",getdata())
-  },[])
-
-  const handleLogout = async () => {
+  const fetchWeather = async (latitude, longitude) => {
     try {
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'GetStarted' }],
-      });
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data?.weather) setWeather(data);
     } catch (error) {
-      console.error('Failed to logout:', error);
-      Alert.alert('Error', 'Failed to logout. Please try again.');
+      console.error('Error fetching weather:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!user) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={customTheme.colors.primary} />
-        <Text style={styles.loadingText}>{t('loading')}</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <Text style={styles.welcomeText}>{t('welcome', { name: user.name })}</Text>
-      <Text style={styles.detailText}>
-        {t('phone')}: {user.phoneNumber}
-      </Text>
-      {/* <Text style={styles.detailText}>
-        {t('location')}: {user.address.city}, {user.address.state}
-      </Text> */}
+      <ScrollView style={styles.scrollContainer}>
+        {/* Profile & Greeting Section */}
+        <View style={styles.profileSection}>
+          <View>
+            <Text style={styles.greeting}>Welcome Back! 👋</Text>
+            <Text style={styles.userName}>{user?.name || 'Alex William'}</Text>
+          </View>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+            <Avatar.Image size={50} source={{ uri: 'https://i.pravatar.cc/150' }} />
+          </TouchableOpacity>
+        </View>
 
-      <Button
-        mode="contained"
-        onPress={handleLogout}
-        color={customTheme.colors.primary} // Uses theme primary color
-        style={styles.button}
-        contentStyle={styles.buttonContent}
-        labelStyle={styles.buttonLabel}
-      >
-        {t('logout')}
-      </Button>
+        {/* Promotional Banner */}
+        <Surface style={styles.bannerCard}>
+          <Image source={{ uri: 'https://source.unsplash.com/random' }} style={styles.bannerImage} />
+          <View style={styles.bannerTextContainer}>
+            <Text style={styles.bannerTitle}>Learn how Plantia helps 10,000+ farmers</Text>
+            <Text style={styles.bannerSubtitle}>Discover AI-powered plant disease detection</Text>
+          </View>
+        </Surface>
+
+        {/* Scan Now & Recent Diagnoses Side by Side */}
+        <View style={styles.horizontalContainer}>
+          {/* Scan Now Card */}
+          <Surface style={styles.scanCard}>
+            <Text style={styles.scanTitle}>Know plant disease with Plantia AI</Text>
+            <Text style={styles.scanSubtitle}>Instantly diagnose plant health issues.</Text>
+            <Button mode="contained" style={styles.scanButton}>Scan Now</Button>
+          </Surface>
+
+          {/* Recent Diagnoses */}
+          <Surface style={styles.diagnosisCard}>
+            <Text style={styles.sectionTitle}>Recent Diagnoses</Text>
+            <View style={styles.diagnosisItem}>
+              <Icon name="leaf" size={24} color={customTheme.colors.primary} />
+              <View>
+                <Text style={styles.diagnosisText}>Powder Mildew</Text>
+                <Text style={styles.diagnosisSubtitle}>Spinach - 2h ago</Text>
+              </View>
+            </View>
+            <View style={styles.diagnosisItem}>
+              <Icon name="bug" size={24} color={customTheme.colors.primary} />
+              <View>
+                <Text style={styles.diagnosisText}>Bacterial Spot</Text>
+                <Text style={styles.diagnosisSubtitle}>Carrot - Jul 3, 2024</Text>
+              </View>
+            </View>
+            <View style={styles.diagnosisItem}>
+              <Icon name="fruit-cherries" size={24} color={customTheme.colors.primary} />
+              <View>
+                <Text style={styles.diagnosisText}>Blight</Text>
+                <Text style={styles.diagnosisSubtitle}>Apple - Jun 24, 2024</Text>
+              </View>
+            </View>
+          </Surface>
+        </View>
+
+        {/* Bottom Navigation Bar */}
+        <View style={styles.bottomBar}>
+          <TouchableOpacity style={styles.bottomBarItem} onPress={() => navigation.navigate('Home')}>
+            <Icon name="home" size={28} color={customTheme.colors.primary} />
+            <Text style={styles.bottomBarText}>Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bottomBarItem} onPress={() => navigation.navigate('Community')}>
+            <Icon name="account-group" size={28} color={customTheme.colors.primary} />
+            <Text style={styles.bottomBarText}>Community</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bottomBarItem} onPress={() => navigation.navigate('Detect')}>
+            <Icon name="camera" size={28} color={customTheme.colors.primary} />
+            <Text style={styles.bottomBarText}>Detect</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -77,48 +130,88 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: customTheme.colors.background, // Uses theme background color
+    backgroundColor: '#F9F9F9',
+  },
+  scrollContainer: {
     padding: 16,
-    justifyContent: 'center',
+  },
+  profileSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 16,
   },
-  welcomeText: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: customTheme.colors.text, // Uses theme text color
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  detailText: {
-    fontSize: 18,
-    color: customTheme.colors.text, // Uses theme text color
-    marginBottom: 10,
-  },
-  button: {
-    marginTop: 30,
-    width: '50%',
-    backgroundColor: customTheme.colors.primary, // Uses theme primary color
-    borderRadius: 25,
-  },
-  buttonContent: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  buttonLabel: {
-    fontSize: 18,
-    color: customTheme.colors.surface, // Ensures contrast with the button
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: customTheme.colors.background, // Uses theme background color
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
+  greeting: {
     fontSize: 16,
-    color: customTheme.colors.text, // Uses theme text color
+    color: '#555',
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  bannerCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  bannerImage: {
+    width: '100%',
+    height: 180,
+  },
+  bannerTextContainer: {
+    padding: 12,
+  },
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  bannerSubtitle: {
+    fontSize: 14,
+    color: '#555',
+  },
+  horizontalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  scanCard: {
+    flex: 1,
+    marginRight: 8,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#DFF6FF',
+  },
+  diagnosisCard: {
+    flex: 1,
+    marginLeft: 8,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#F0F4F8',
+  },
+  diagnosisItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  diagnosisText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  diagnosisSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  bottomBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+  },
+  bottomBarText: {
+    fontSize: 14,
+    marginTop: 4,
   },
 });
 

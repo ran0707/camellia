@@ -31,6 +31,20 @@ const floatingAnimation = {
 };
 
 const GetStartedScreen = () => {
+  useEffect(()=>{
+    navigation.reset(
+      {
+        index: 0,
+        routes: [
+          {
+            name: 'Home',
+            },
+            ],
+            },
+            );
+            },[]);
+  
+  
   const navigation = useNavigation();
   const { t } = useTranslation();
   
@@ -189,12 +203,12 @@ const styles = StyleSheet.create({
   },
   topLeft: {
     position: 'absolute',
-    top: 10,
+    top:0,
     left: 10,
   },
   topRight: {
     position: 'absolute',
-    top: 10,
+    top: 0,
     right: 10,
   },
   roundedLogo: {
