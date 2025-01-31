@@ -31,20 +31,20 @@ const floatingAnimation = {
 };
 
 const GetStartedScreen = () => {
-  useEffect(()=>{
-    navigation.reset(
-      {
-        index: 0,
-        routes: [
-          {
-            name: 'Home',
-            },
-            ],
-            },
-            );
-            },[]);
-  
-  
+  // useEffect(()=>{
+  // navigation.reset(
+  //   {
+  //     index: 0,
+  //     routes: [
+  //       {
+  //         name: 'Home',
+  //         },
+  //         ],
+  //         },
+  //         );
+  //         },[]);
+
+
   const navigation = useNavigation();
   const { t } = useTranslation();
   
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   roundedLogo: {
     width: 100,
     height: 100,
-    borderRadius: 50,
+    //eeeborderRadius: 50,
     overflow: 'hidden',
   },
   centerContent: {

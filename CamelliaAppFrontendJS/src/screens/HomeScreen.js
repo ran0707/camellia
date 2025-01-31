@@ -163,7 +163,7 @@ const HomeScreen = () => {
       <Surface style={styles.bottomNav}>
         {[
           { icon: 'home', label: 'Home', active: true },
-          { icon: 'shopping', label: 'Shop', active: false },
+          { icon: 'newspaper', label: 'Tea Hub', active: false },
           { icon: 'account', label: 'Profile', active: false }
         ].map((item, index) => (
           <TouchableOpacity 
